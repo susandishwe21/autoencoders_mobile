@@ -34,8 +34,6 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
   late Model model;
   Uint8List? inputImage;
   Uint8List? outputImage;
-  String? _inputImageSize;
-  String? _outputImageSize;
   bool _modelReady = false;
   bool _validatingModel = false;
   bool _mnistReady = false;
@@ -137,22 +135,12 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
     }
 
     final reconstructedPng = _vectorToPng(outputValues);
-    final inputSize = _formatImageSize(originalPng);
-    final outputSize = _formatImageSize(reconstructedPng);
     if (!mounted) return;
     setState(() {
       inputImage = originalPng;
       outputImage = reconstructedPng;
-      _inputImageSize = inputSize;
-      _outputImageSize = outputSize;
       _sampleInfo = 'MNIST sample row index #$rowIndex, label: $label';
     });
-  }
-
-  String? _formatImageSize(Uint8List imageBytes) {
-    final decoded = img.decodeImage(imageBytes);
-    if (decoded == null) return null;
-    return '${decoded.width} × ${decoded.height} px';
   }
 
   Uint8List _vectorToPng(List<double> values) {
@@ -242,7 +230,7 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final previewSize = ((screenWidth - 48) / 2).clamp(80.0, 100.0);
+    final previewSize = ((screenWidth - 48) / 2).clamp(70.0, 90.0);
 
     return Scaffold(
       appBar: AppBar(
@@ -286,8 +274,6 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
                     _modelReady = false;
                     inputImage = null;
                     outputImage = null;
-                    _inputImageSize = null;
-                    _outputImageSize = null;
                     _sampleInfo = null;
                   });
                   loadModel();
@@ -377,14 +363,6 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
                           filterQuality: FilterQuality.none,
                         ),
                       ),
-                    if (_inputImageSize != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          _inputImageSize!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
                   ],
                 ),
                 Column(
@@ -408,14 +386,6 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
                           height: previewSize,
                           fit: BoxFit.fill,
                           filterQuality: FilterQuality.none,
-                        ),
-                      ),
-                    if (_outputImageSize != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          _outputImageSize!,
-                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
                   ],
