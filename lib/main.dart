@@ -10,9 +10,12 @@ class ANNApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: AutoencoderScreen(),
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: AutoencoderScreen(),
+      ),
     );
   }
 }

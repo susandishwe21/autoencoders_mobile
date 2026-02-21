@@ -34,6 +34,8 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
   late Model model;
   Uint8List? inputImage;
   Uint8List? outputImage;
+  String? _inputImageSize;
+  String? _outputImageSize;
   bool _modelReady = false;
   bool _validatingModel = false;
   bool _mnistReady = false;
@@ -129,19 +131,28 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
     if (outputValues.length < 784) {
       if (!mounted) return;
       setState(() {
-        _sampleInfo =
-            'MNIST sample #$rowIndex, label: $label (inference failed: ${_lastPredictError ?? 'no compatible shape'})';
+        _sampleInfo = 'MNIST sample row index #$rowIndex, label: $label';
       });
       return;
     }
 
     final reconstructedPng = _vectorToPng(outputValues);
+    final inputSize = _formatImageSize(originalPng);
+    final outputSize = _formatImageSize(reconstructedPng);
     if (!mounted) return;
     setState(() {
       inputImage = originalPng;
       outputImage = reconstructedPng;
-      _sampleInfo = 'MNIST sample #$rowIndex, label: $label';
+      _inputImageSize = inputSize;
+      _outputImageSize = outputSize;
+      _sampleInfo = 'MNIST sample row index #$rowIndex, label: $label';
     });
+  }
+
+  String? _formatImageSize(Uint8List imageBytes) {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return null;
+    return '${decoded.width} × ${decoded.height} px';
   }
 
   Uint8List _vectorToPng(List<double> values) {
@@ -230,38 +241,92 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final previewSize = ((screenWidth - 48) / 2).clamp(80.0, 100.0);
+
     return Scaffold(
-      appBar: AppBar(title: Text("Autoencoder Test")),
+      appBar: AppBar(
+        title: Text(
+          "Autoencoder Test",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          DropdownButton<AutoencoderModel>(
-            value: selectedAutoencoder,
-            items: autoencoderModels
-                .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                selectedAutoencoder = val!;
-                _modelReady = false;
-                inputImage = null;
-                outputImage = null;
-                _sampleInfo = null;
-              });
-              loadModel();
-            },
-          ),
-          ElevatedButton(
-            onPressed: (_modelReady && _mnistReady) ? runMnistSample : null,
+          SizedBox(height: 15),
+          Container(
+            alignment: Alignment.centerLeft,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              _modelReady
-                  ? (_mnistReady
-                        ? "Load Random MNIST Sample"
-                        : "Loading MNIST...")
-                  : "Loading model...",
+              "Select Autoencoder Model:",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
+          SizedBox(height: 15),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            width: MediaQuery.of(context).size.width,
+            height: 50,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<AutoencoderModel>(
+                value: selectedAutoencoder,
+                items: autoencoderModels
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                    .toList(),
+                onChanged: (val) {
+                  setState(() {
+                    selectedAutoencoder = val!;
+                    _modelReady = false;
+                    inputImage = null;
+                    outputImage = null;
+                    _inputImageSize = null;
+                    _outputImageSize = null;
+                    _sampleInfo = null;
+                  });
+                  loadModel();
+                },
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+          Container(
+            width: MediaQuery.of(context).size.width,
+            height: 50,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                backgroundColor: Colors.purple,
+              ),
+              onPressed: (_modelReady && _mnistReady) ? runMnistSample : null,
+              child: Text(
+                _modelReady
+                    ? (_mnistReady
+                          ? "Load Random MNIST Sample"
+                          : "Loading MNIST...")
+                    : "Loading model...",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
           if (_sampleInfo != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -280,35 +345,82 @@ class AutoencoderScreenState extends State<AutoencoderScreen> {
                 style: TextStyle(
                   color: _modelReady ? Colors.green : Colors.red,
                   fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
               ),
             ),
+          SizedBox(height: 20),
           if (inputImage != null || outputImage != null)
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text("Original"),
-                        const SizedBox(height: 8),
-                        if (inputImage != null)
-                          Expanded(child: Image.memory(inputImage!)),
-                      ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    const Text(
+                      "Original",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text("Reconstructed"),
-                        const SizedBox(height: 8),
-                        if (outputImage != null)
-                          Expanded(child: Image.memory(outputImage!)),
-                      ],
+                    const SizedBox(height: 8),
+                    if (inputImage != null)
+                      Container(
+                        width: previewSize,
+                        height: previewSize,
+                        color: Colors.black,
+                        child: Image.memory(
+                          inputImage!,
+                          width: previewSize,
+                          height: previewSize,
+                          fit: BoxFit.fill,
+                          filterQuality: FilterQuality.none,
+                        ),
+                      ),
+                    if (_inputImageSize != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _inputImageSize!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    const Text(
+                      "Reconstructed",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 8),
+                    if (outputImage != null)
+                      Container(
+                        width: previewSize,
+                        height: previewSize,
+                        color: Colors.black,
+                        child: Image.memory(
+                          outputImage!,
+                          width: previewSize,
+                          height: previewSize,
+                          fit: BoxFit.fill,
+                          filterQuality: FilterQuality.none,
+                        ),
+                      ),
+                    if (_outputImageSize != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _outputImageSize!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
         ],
       ),
